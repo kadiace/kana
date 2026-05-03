@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kana Random Practice</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: linear-gradient(135deg, #f8fafc, #e0f2fe);
+        color: #0f172a;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      .top-actions {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        display: flex;
+        gap: 8px;
+        z-index: 10;
+      }
+
+      .kana-table-button,
+      .answer-button {
+        border: 0;
+        border-radius: 999px;
+        background: #0f172a;
+        color: white;
+        font-size: 20px;
+        font-weight: 700;
+        padding: 10px 16px;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+        transition:
+          transform 0.15s ease,
+          opacity 0.15s ease;
+      }
+
+      .kana-table-button:hover,
+      .answer-button:hover {
+        transform: translateY(-1px);
+        opacity: 0.9;
+      }
+
+      .practice-area {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        cursor: pointer;
+      }
+
+      .card {
+        width: min(520px, 92vw);
+        min-height: 320px;
+        border-radius: 32px;
+        background: rgba(255, 255, 255, 0.74);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.16);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 24px;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+      }
+
+      .hint {
+        font-size: 15px;
+        color: #64748b;
+        margin-bottom: 24px;
+        text-align: center;
+      }
+
+      .kana-display {
+        font-size: clamp(112px, 24vw, 220px);
+        line-height: 1;
+        font-weight: 800;
+        letter-spacing: -0.08em;
+      }
+
+      .bottom-panel {
+        position: fixed;
+        left: 50%;
+        bottom: 28px;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        z-index: 9;
+      }
+
+      .answer-button {
+        font-size: 17px;
+        padding: 12px 22px;
+        background: #2563eb;
+      }
+
+      .answer-text {
+        min-height: 34px;
+        font-size: 26px;
+        font-weight: 800;
+        color: #1e293b;
+        text-align: center;
+      }
+
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 100;
+      }
+
+      .modal-overlay.open {
+        display: flex;
+      }
+
+      .modal {
+        width: min(920px, 96vw);
+        max-height: min(780px, 90vh);
+        overflow: auto;
+        border-radius: 28px;
+        background: white;
+        box-shadow: 0 30px 100px rgba(15, 23, 42, 0.35);
+        padding: 24px;
+        position: relative;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .modal-title {
+        font-size: 26px;
+        font-weight: 900;
+        margin: 0;
+      }
+
+      .close-button {
+        border: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        color: #0f172a;
+        font-size: 24px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .kana-grid {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 8px;
+      }
+
+      .kana-grid th,
+      .kana-grid td {
+        min-width: 76px;
+        border-radius: 14px;
+        padding: 10px 8px;
+        text-align: center;
+        background: #f1f5f9;
+        vertical-align: middle;
+      }
+
+      .kana-grid th {
+        background: #dbeafe;
+        font-size: 15px;
+        color: #1e3a8a;
+      }
+
+      .kana-cell-char {
+        display: block;
+        font-size: 30px;
+        font-weight: 900;
+        line-height: 1.1;
+      }
+
+      .kana-cell-romaji {
+        display: block;
+        margin-top: 3px;
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 700;
+      }
+
+      .empty-cell {
+        opacity: 0.35;
+      }
+
+      @media (max-width: 640px) {
+        .kana-grid {
+          border-spacing: 5px;
+        }
+
+        .kana-grid th,
+        .kana-grid td {
+          min-width: 48px;
+          padding: 8px 4px;
+        }
+
+        .kana-cell-char {
+          font-size: 24px;
+        }
+
+        .modal {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-actions">
+      <button class="kana-table-button" data-table="hiragana">あ</button>
+      <button class="kana-table-button" data-table="katakana">ア</button>
+    </div>
+
+    <main class="practice-area" id="practiceArea">
+      <section class="card">
+        <div class="hint">
+          화면 아무데나 클릭하면 랜덤 히라가나 또는 가타카나가 나옵니다.
+        </div>
+        <div class="kana-display" id="kanaDisplay">あ</div>
+      </section>
+    </main>
+
+    <div class="bottom-panel">
+      <button class="answer-button" id="answerButton">정답</button>
+      <div class="answer-text" id="answerText"></div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+      <section
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+      >
+        <header class="modal-header">
+          <h2 class="modal-title" id="modalTitle">히라가나 표</h2>
+          <button class="close-button" id="closeButton" aria-label="닫기">
+            ×
+          </button>
+        </header>
+        <div id="tableContainer"></div>
+      </section>
+    </div>
+
+    <script>
+      const hiragana = [
+        { char: "あ", romaji: "a" },
+        { char: "い", romaji: "i" },
+        { char: "う", romaji: "u" },
+        { char: "え", romaji: "e" },
+        { char: "お", romaji: "o" },
+        { char: "か", romaji: "ka" },
+        { char: "き", romaji: "ki" },
+        { char: "く", romaji: "ku" },
+        { char: "け", romaji: "ke" },
+        { char: "こ", romaji: "ko" },
+        { char: "さ", romaji: "sa" },
+        { char: "し", romaji: "shi" },
+        { char: "す", romaji: "su" },
+        { char: "せ", romaji: "se" },
+        { char: "そ", romaji: "so" },
+        { char: "た", romaji: "ta" },
+        { char: "ち", romaji: "chi" },
+        { char: "つ", romaji: "tsu" },
+        { char: "て", romaji: "te" },
+        { char: "と", romaji: "to" },
+        { char: "な", romaji: "na" },
+        { char: "に", romaji: "ni" },
+        { char: "ぬ", romaji: "nu" },
+        { char: "ね", romaji: "ne" },
+        { char: "の", romaji: "no" },
+        { char: "は", romaji: "ha" },
+        { char: "ひ", romaji: "hi" },
+        { char: "ふ", romaji: "fu" },
+        { char: "へ", romaji: "he" },
+        { char: "ほ", romaji: "ho" },
+        { char: "ま", romaji: "ma" },
+        { char: "み", romaji: "mi" },
+        { char: "む", romaji: "mu" },
+        { char: "め", romaji: "me" },
+        { char: "も", romaji: "mo" },
+        { char: "や", romaji: "ya" },
+        null,
+        { char: "ゆ", romaji: "yu" },
+        null,
+        { char: "よ", romaji: "yo" },
+        { char: "ら", romaji: "ra" },
+        { char: "り", romaji: "ri" },
+        { char: "る", romaji: "ru" },
+        { char: "れ", romaji: "re" },
+        { char: "ろ", romaji: "ro" },
+        { char: "わ", romaji: "wa" },
+        null,
+        null,
+        null,
+        { char: "を", romaji: "wo" },
+        { char: "ん", romaji: "n" },
+        null,
+        null,
+        null,
+        null,
+      ];
+
+      const katakana = [
+        { char: "ア", romaji: "a" },
+        { char: "イ", romaji: "i" },
+        { char: "ウ", romaji: "u" },
+        { char: "エ", romaji: "e" },
+        { char: "オ", romaji: "o" },
+        { char: "カ", romaji: "ka" },
+        { char: "キ", romaji: "ki" },
+        { char: "ク", romaji: "ku" },
+        { char: "ケ", romaji: "ke" },
+        { char: "コ", romaji: "ko" },
+        { char: "サ", romaji: "sa" },
+        { char: "シ", romaji: "shi" },
+        { char: "ス", romaji: "su" },
+        { char: "セ", romaji: "se" },
+        { char: "ソ", romaji: "so" },
+        { char: "タ", romaji: "ta" },
+        { char: "チ", romaji: "chi" },
+        { char: "ツ", romaji: "tsu" },
+        { char: "テ", romaji: "te" },
+        { char: "ト", romaji: "to" },
+        { char: "ナ", romaji: "na" },
+        { char: "ニ", romaji: "ni" },
+        { char: "ヌ", romaji: "nu" },
+        { char: "ネ", romaji: "ne" },
+        { char: "ノ", romaji: "no" },
+        { char: "ハ", romaji: "ha" },
+        { char: "ヒ", romaji: "hi" },
+        { char: "フ", romaji: "fu" },
+        { char: "ヘ", romaji: "he" },
+        { char: "ホ", romaji: "ho" },
+        { char: "マ", romaji: "ma" },
+        { char: "ミ", romaji: "mi" },
+        { char: "ム", romaji: "mu" },
+        { char: "メ", romaji: "me" },
+        { char: "モ", romaji: "mo" },
+        { char: "ヤ", romaji: "ya" },
+        null,
+        { char: "ユ", romaji: "yu" },
+        null,
+        { char: "ヨ", romaji: "yo" },
+        { char: "ラ", romaji: "ra" },
+        { char: "リ", romaji: "ri" },
+        { char: "ル", romaji: "ru" },
+        { char: "レ", romaji: "re" },
+        { char: "ロ", romaji: "ro" },
+        { char: "ワ", romaji: "wa" },
+        null,
+        null,
+        null,
+        { char: "ヲ", romaji: "wo" },
+        { char: "ン", romaji: "n" },
+        null,
+        null,
+        null,
+        null,
+      ];
+
+      const allKana = [...hiragana, ...katakana].filter(Boolean);
+      const kanaDisplay = document.getElementById("kanaDisplay");
+      const answerText = document.getElementById("answerText");
+      const practiceArea = document.getElementById("practiceArea");
+      const answerButton = document.getElementById("answerButton");
+      const modalOverlay = document.getElementById("modalOverlay");
+      const modalTitle = document.getElementById("modalTitle");
+      const tableContainer = document.getElementById("tableContainer");
+      const closeButton = document.getElementById("closeButton");
+
+      let currentKana = allKana[0];
+
+      function pickRandomKana() {
+        currentKana = allKana[Math.floor(Math.random() * allKana.length)];
+        kanaDisplay.textContent = currentKana.char;
+        answerText.textContent = "";
+      }
+
+      function showAnswer(event) {
+        event.stopPropagation();
+        answerText.textContent = currentKana.romaji;
+      }
+
+      function buildKanaTable(items) {
+        const headers = ["a", "i", "u", "e", "o"];
+        let html = `<table class="kana-grid"><thead><tr>${headers.map((header) => `<th>${header}</th>`).join("")}</tr></thead><tbody>`;
+
+        for (let i = 0; i < items.length; i += 5) {
+          html += "<tr>";
+          for (const item of items.slice(i, i + 5)) {
+            if (!item) {
+              html += `<td class="empty-cell">—</td>`;
+            } else {
+              html += `<td><span class="kana-cell-char">${item.char}</span><span class="kana-cell-romaji">${item.romaji}</span></td>`;
+            }
+          }
+          html += "</tr>";
+        }
+
+        html += "</tbody></table>";
+        return html;
+      }
+
+      function openTable(type, event) {
+        event.stopPropagation();
+        const isHiragana = type === "hiragana";
+        modalTitle.textContent = isHiragana ? "히라가나 표" : "가타카나 표";
+        tableContainer.innerHTML = buildKanaTable(
+          isHiragana ? hiragana : katakana,
+        );
+        modalOverlay.classList.add("open");
+      }
+
+      function closeModal() {
+        modalOverlay.classList.remove("open");
+      }
+
+      practiceArea.addEventListener("click", pickRandomKana);
+      answerButton.addEventListener("click", showAnswer);
+      closeButton.addEventListener("click", closeModal);
+
+      document.querySelectorAll(".kana-table-button").forEach((button) => {
+        button.addEventListener("click", (event) =>
+          openTable(button.dataset.table, event),
+        );
+      });
+
+      modalOverlay.addEventListener("click", (event) => {
+        if (event.target === modalOverlay) {
+          closeModal();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeModal();
+        }
+      });
+    </script>
+  </body>
+</html>
