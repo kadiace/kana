@@ -742,6 +742,7 @@
       let elementaryKanji = [];
       let secondaryKanji = [];
       let kanjiLoadState = "loading";
+      let lockedIndexTargetId = null;
 
       const kanaIndexOrder = [
         "あ",
@@ -1072,22 +1073,20 @@
         const hadNoActiveItems = getActiveItems().length === 0;
 
         if (nextMode === "kanji") {
+          if (kanjiOptions.classList.contains("open")) {
+            closeKanjiOptionsWithValidation();
+            return;
+          }
+
           if (activeModes.has("kanji")) {
-            if (kanjiOptions.classList.contains("open")) {
-              closeKanjiOptionsWithValidation();
-            } else {
-              kanjiOptions.classList.add("open");
-              updateMetaText();
-            }
+            kanjiOptions.classList.add("open");
+            updateMetaText();
             return;
           }
 
           resetKanjiCheckboxes();
           activeModes.add("kanji");
           kanjiOptions.classList.add("open");
-        } else {
-          if (activeModes.has(nextMode)) activeModes.delete(nextMode);
-          else activeModes.add(nextMode);
         }
 
         document.querySelectorAll(".mode-button").forEach((button) => {
@@ -1164,17 +1163,33 @@
       function syncKanjiModeFromCheckboxChange() {
         const hasAnyKanjiRange =
           elementaryKanjiCheck.checked || secondaryKanjiCheck.checked;
-        const activeItems = getActiveItems();
 
         if (!hasAnyKanjiRange) {
-          kanaDisplay.textContent = "?";
-          currentItem = emptyItem;
-          answerText.textContent = "";
-          metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+          activeModes.delete("kanji");
+
+          document.querySelectorAll(".mode-button").forEach((button) => {
+            button.classList.toggle(
+              "active",
+              activeModes.has(button.dataset.mode),
+            );
+          });
+
+          if (getActiveItems().length > 0) {
+            updateMetaText();
+          } else {
+            kanaDisplay.textContent = "?";
+            currentItem = emptyItem;
+            answerText.textContent = "";
+            metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+          }
+
           return;
         }
 
+        const hadNoActiveItems = getActiveItems().length === 0;
+
         activeModes.add("kanji");
+
         document.querySelectorAll(".mode-button").forEach((button) => {
           button.classList.toggle(
             "active",
@@ -1182,8 +1197,7 @@
           );
         });
 
-        const onlyQuestionIsVisible = kanaDisplay.textContent === "?";
-        if (onlyQuestionIsVisible || activeItems.length > 0) {
+        if (hadNoActiveItems || kanaDisplay.textContent === "?") {
           pickRandomItem();
           return;
         }
@@ -1228,6 +1242,23 @@
       }
 
       function updateKanjiSectionNavActive() {
+        if (lockedIndexTargetId) {
+          const target = document.getElementById(lockedIndexTargetId);
+
+          if (target) {
+            const containerTop = tableContainer.getBoundingClientRect().top;
+            const targetTop = target.getBoundingClientRect().top;
+            const distance = Math.abs(targetTop - containerTop);
+
+            if (distance > 8) {
+              setActiveIndexButton(lockedIndexTargetId);
+              return;
+            }
+          }
+
+          lockedIndexTargetId = null;
+        }
+
         const elementaryTop = document.getElementById("elementary-top");
         const secondaryTop = document.getElementById("secondary-top");
         const buttons = kanjiSectionNav.querySelectorAll(".kanji-index-button");
@@ -1270,6 +1301,60 @@
             button.dataset.target === activeTarget,
           );
         });
+
+        // Highlight on kana index.
+        const visibleKanaSections = [
+          ...tableContainer.querySelectorAll(".kanji-list-section"),
+        ];
+
+        let currentKanaSection = visibleKanaSections[0];
+
+        for (const section of visibleKanaSections) {
+          const sectionTop = section.getBoundingClientRect().top;
+          const containerTop = tableContainer.getBoundingClientRect().top;
+
+          if (sectionTop <= containerTop + 80) {
+            currentKanaSection = section;
+          } else {
+            break;
+          }
+        }
+
+        tableContainer
+          .querySelectorAll(
+            ".kanji-outer-section .kanji-index .kanji-index-button",
+          )
+          .forEach((button) => {
+            const isActive =
+              currentKanaSection &&
+              button.dataset.target === currentKanaSection.id;
+
+            button.classList.toggle("active", isActive);
+          });
+      }
+
+      function setActiveIndexButton(targetId, lock = false) {
+        if (lock) lockedIndexTargetId = targetId;
+
+        kanjiSectionNav
+          .querySelectorAll(".kanji-index-button")
+          .forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.target === targetId,
+            );
+          });
+
+        tableContainer
+          .querySelectorAll(
+            ".kanji-outer-section .kanji-index .kanji-index-button",
+          )
+          .forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.target === targetId,
+            );
+          });
       }
 
       tableContainer.addEventListener("click", (event) => {
@@ -1282,10 +1367,20 @@
         const button = event.target.closest(".kanji-index-button");
         if (!button) return;
         event.stopPropagation();
+
+        setActiveIndexButton(button.dataset.target, true);
         scrollKanjiTarget(button.dataset.target);
       });
 
       tableContainer.addEventListener("scroll", updateKanjiSectionNavActive);
+
+      tableContainer.addEventListener("click", (event) => {
+        const button = event.target.closest(".kanji-index-button");
+        if (!button) return;
+
+        setActiveIndexButton(button.dataset.target, true);
+        scrollKanjiTarget(button.dataset.target);
+      });
 
       document.addEventListener("click", (event) => {
         if (
