@@ -931,10 +931,7 @@
         const count = getActiveItems().length;
 
         if (!count) {
-          metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
-          kanaDisplay.textContent = "?";
-          currentItem = emptyItem;
-          answerText.textContent = "";
+          resetToEmptyState();
           return;
         }
 
@@ -947,10 +944,7 @@
         answerText.textContent = "";
         updateMetaText();
         if (!items.length) {
-          kanaDisplay.textContent = "?";
-          currentItem = emptyItem;
-          metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
-          answerText.textContent = "";
+          resetToEmptyState();
           return;
         }
         currentItem = items[Math.floor(Math.random() * items.length)];
@@ -1130,10 +1124,7 @@
         syncModeButtons();
 
         if (!activeItems.length) {
-          kanaDisplay.textContent = "?";
-          currentItem = emptyItem;
-          answerText.textContent = "";
-          metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+          resetToEmptyState();
           return;
         }
 
@@ -1253,6 +1244,13 @@
         updateMetaText();
       }
 
+      function resetToEmptyState() {
+        kanaDisplay.textContent = "?";
+        currentItem = emptyItem;
+        answerText.textContent = "";
+        metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+      }
+
       function getCurrentKanjiRange() {
         if (!currentItem || currentItem === emptyItem) return null;
         if (elementaryKanji.includes(currentItem)) return "elementary";
@@ -1290,10 +1288,7 @@
               updateMetaText();
             }
           } else {
-            kanaDisplay.textContent = "?";
-            currentItem = emptyItem;
-            answerText.textContent = "";
-            metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+            resetToEmptyState();
           }
 
           return;
