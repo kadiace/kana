@@ -1102,13 +1102,70 @@
         modalOverlay.classList.remove("open");
       }
 
+      function getCurrentItemMode() {
+        if (!currentItem || currentItem === emptyItem) return null;
+        if (hiragana.filter(Boolean).includes(currentItem)) return "hiragana";
+        if (katakana.filter(Boolean).includes(currentItem)) return "katakana";
+        if (
+          elementaryKanji.includes(currentItem) ||
+          secondaryKanji.includes(currentItem)
+        ) {
+          return "kanji";
+        }
+        return null;
+      }
+
+      function syncModeButtons() {
+        document.querySelectorAll(".mode-button").forEach((button) => {
+          button.classList.toggle(
+            "active",
+            activeModes.has(button.dataset.mode),
+          );
+        });
+      }
+
+      function refreshAfterModeChange(wasCurrentModeDisabled) {
+        const activeItems = getActiveItems();
+
+        syncModeButtons();
+
+        if (!activeItems.length) {
+          kanaDisplay.textContent = "?";
+          currentItem = emptyItem;
+          answerText.textContent = "";
+          metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+          return;
+        }
+
+        if (wasCurrentModeDisabled || kanaDisplay.textContent === "?") {
+          pickRandomItem();
+          return;
+        }
+
+        updateMetaText();
+      }
+
       function toggleMode(nextMode, event) {
         event.stopPropagation();
+
         const hadNoActiveItems = getActiveItems().length === 0;
+        const currentItemMode = getCurrentItemMode();
+        let wasCurrentModeDisabled = false;
 
         if (nextMode === "kanji") {
           if (kanjiOptions.classList.contains("open")) {
+            const wasKanjiActive = activeModes.has("kanji");
             closeKanjiOptionsWithValidation();
+
+            wasCurrentModeDisabled =
+              wasKanjiActive &&
+              !activeModes.has("kanji") &&
+              currentItemMode === "kanji";
+
+            if (wasCurrentModeDisabled && getActiveItems().length > 0) {
+              pickRandomItem();
+            }
+
             return;
           }
 
@@ -1124,23 +1181,19 @@
         } else {
           if (activeModes.has(nextMode)) {
             activeModes.delete(nextMode);
+            wasCurrentModeDisabled = currentItemMode === nextMode;
           } else {
             activeModes.add(nextMode);
           }
         }
 
-        document.querySelectorAll(".mode-button").forEach((button) => {
-          button.classList.toggle(
-            "active",
-            activeModes.has(button.dataset.mode),
-          );
-        });
-
         if (hadNoActiveItems && getActiveItems().length > 0) {
+          syncModeButtons();
           pickRandomItem();
-        } else {
-          updateMetaText();
+          return;
         }
+
+        refreshAfterModeChange(wasCurrentModeDisabled);
       }
 
       practiceArea.addEventListener("click", (event) => {
@@ -1200,22 +1253,42 @@
         updateMetaText();
       }
 
+      function getCurrentKanjiRange() {
+        if (!currentItem || currentItem === emptyItem) return null;
+        if (elementaryKanji.includes(currentItem)) return "elementary";
+        if (secondaryKanji.includes(currentItem)) return "secondary";
+        return null;
+      }
+
+      function isCurrentKanjiStillSelectable() {
+        const currentKanjiRange = getCurrentKanjiRange();
+
+        if (!currentKanjiRange) return true;
+        if (!activeModes.has("kanji")) return false;
+        if (currentKanjiRange === "elementary")
+          return elementaryKanjiCheck.checked;
+        if (currentKanjiRange === "secondary")
+          return secondaryKanjiCheck.checked;
+
+        return true;
+      }
+
       function syncKanjiModeFromCheckboxChange() {
+        const hadNoActiveItems = getActiveItems().length === 0;
+        const currentKanjiRange = getCurrentKanjiRange();
         const hasAnyKanjiRange =
           elementaryKanjiCheck.checked || secondaryKanjiCheck.checked;
 
         if (!hasAnyKanjiRange) {
           activeModes.delete("kanji");
-
-          document.querySelectorAll(".mode-button").forEach((button) => {
-            button.classList.toggle(
-              "active",
-              activeModes.has(button.dataset.mode),
-            );
-          });
+          syncModeButtons();
 
           if (getActiveItems().length > 0) {
-            updateMetaText();
+            if (currentKanjiRange) {
+              pickRandomItem();
+            } else {
+              updateMetaText();
+            }
           } else {
             kanaDisplay.textContent = "?";
             currentItem = emptyItem;
@@ -1226,18 +1299,14 @@
           return;
         }
 
-        const hadNoActiveItems = getActiveItems().length === 0;
-
         activeModes.add("kanji");
+        syncModeButtons();
 
-        document.querySelectorAll(".mode-button").forEach((button) => {
-          button.classList.toggle(
-            "active",
-            activeModes.has(button.dataset.mode),
-          );
-        });
-
-        if (hadNoActiveItems || kanaDisplay.textContent === "?") {
+        if (
+          hadNoActiveItems ||
+          kanaDisplay.textContent === "?" ||
+          !isCurrentKanjiStillSelectable()
+        ) {
           pickRandomItem();
           return;
         }
