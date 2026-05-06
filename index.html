@@ -870,6 +870,28 @@
         }
 
         updateMetaText();
+
+        const isKanjiTableOpen =
+          modalOverlay.classList.contains("open") &&
+          kanjiSectionNav.classList.contains("open");
+
+        if (isKanjiTableOpen) {
+          tableContainer.innerHTML = buildKanjiTable();
+          tableContainer.classList.remove("scrolled");
+          tableContainer.classList.remove("show-elementary-title");
+          tableContainer.scrollTop = 0;
+
+          kanjiSectionNav
+            .querySelectorAll(".kanji-index-button")
+            .forEach((button) => {
+              button.classList.toggle(
+                "active",
+                button.dataset.target === "elementary-top",
+              );
+            });
+
+          requestAnimationFrame(updateKanjiSectionNavActive);
+        }
       }
 
       function sortKanji(items) {
