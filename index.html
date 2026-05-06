@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kana & Kanji Random Practice</title>
+    <title>Kana Random Practice</title>
+    <link rel="icon" href="public/favicon.ico" />
+    <meta property="og:title" content="Kana Random Practice" />
+    <meta
+      property="og:description"
+      content="A lightweight trainer for quick Hiragana, Katakana, and Kanji practice."
+    />
+    <meta property="og:image" content="public/OGImage.png" />
+    <meta property="og:type" content="website" />
     <style>
       * {
         box-sizing: border-box;
@@ -30,11 +38,23 @@
 
       .top-actions {
         position: fixed;
-        top: 16px;
-        right: 16px;
+        top: 18px;
+        right: 18px;
         display: flex;
-        gap: 8px;
-        z-index: 10;
+        gap: 10px;
+        z-index: 100;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: calc(100vw - 24px);
+      }
+
+      @media (max-width: 640px) {
+        .top-actions {
+          top: 12px;
+          right: 12px;
+          left: 12px;
+          justify-content: flex-end;
+        }
       }
 
       .mode-actions {
@@ -470,9 +490,11 @@
 
       @media (max-width: 640px) {
         .top-actions {
-          top: auto;
-          bottom: 16px;
-          right: 16px;
+          top: 12px;
+          right: 12px;
+          bottom: auto;
+          left: auto;
+          justify-content: flex-end;
         }
 
         .mode-actions {
@@ -567,10 +589,10 @@
             class="kanji-index-button active"
             data-target="elementary-top"
           >
-            초등 한자
+            초등 처음
           </button>
           <button class="kanji-index-button" data-target="secondary-top">
-            중등 한자
+            중등 처음
           </button>
         </nav>
         <div id="tableContainer"></div>
