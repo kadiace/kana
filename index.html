@@ -335,7 +335,7 @@
           padding 0.18s ease;
       }
 
-      #tableContainer.scrolled
+      #tableContainer.scrolled:not(.show-elementary-title)
         .kanji-outer-section:first-child
         .kanji-section-title {
         opacity: 0;
@@ -1038,6 +1038,8 @@
         event.stopPropagation();
         kanjiSectionNav.classList.toggle("open", type === "kanji");
         tableContainer.classList.remove("scrolled");
+        tableContainer.classList.remove("show-elementary-title");
+        lockedIndexTargetId = null;
         tableContainer.scrollTop = 0;
 
         if (type === "hiragana") {
@@ -1219,22 +1221,61 @@
         syncKanjiModeFromCheckboxChange,
       );
 
-      function scrollKanjiTarget(targetId) {
-        const target = document.getElementById(targetId);
+      function getStickyIndexHeightForTarget(target) {
+        const section = target.closest(".kanji-outer-section");
+        if (!section) return 0;
+
+        const stickyIndex = section.querySelector(".kanji-index");
+        if (!stickyIndex) return 0;
+
+        return stickyIndex.getBoundingClientRect().height;
+      }
+
+      function getTargetElementForButton(button) {
+        const targetId = button.dataset.target;
+        const section = button.closest(".kanji-outer-section");
+
+        if (section) {
+          const scopedTarget = section.querySelector(
+            "#" + CSS.escape(targetId),
+          );
+          if (scopedTarget) return scopedTarget;
+        }
+
+        return document.getElementById(targetId);
+      }
+
+      function scrollKanjiTarget(targetId, sourceButton = null) {
+        const target = sourceButton
+          ? getTargetElementForButton(sourceButton)
+          : document.getElementById(targetId);
+
         if (!target) return;
+
+        tableContainer.classList.toggle(
+          "show-elementary-title",
+          target.id === "elementary-top",
+        );
 
         const containerTop = tableContainer.getBoundingClientRect().top;
         const targetTop = target.getBoundingClientRect().top;
-        const stickyCompensation = target.classList.contains(
+        const isSectionTitleTarget = target.classList.contains(
           "kanji-section-title",
-        )
-          ? 48
-          : 0;
+        );
+        const stickyIndexHeight = isSectionTitleTarget
+          ? 0
+          : getStickyIndexHeightForTarget(target);
+        const gapBelowStickyIndex = isSectionTitleTarget ? 0 : 8;
+        const sectionTitleTopPadding = target.id === "secondary-top" ? 22 : 0;
+
         const offset =
           tableContainer.scrollTop +
           targetTop -
           containerTop -
-          stickyCompensation;
+          stickyIndexHeight -
+          gapBelowStickyIndex -
+          sectionTitleTopPadding;
+
         tableContainer.scrollTo({
           top: Math.max(0, offset),
           behavior: "smooth",
@@ -1242,13 +1283,40 @@
       }
 
       function updateKanjiSectionNavActive() {
+        const elementaryTopForTitle = document.getElementById("elementary-top");
+        if (
+          tableContainer.classList.contains("show-elementary-title") &&
+          !lockedIndexTargetId &&
+          elementaryTopForTitle &&
+          Math.abs(
+            elementaryTopForTitle.getBoundingClientRect().top -
+              tableContainer.getBoundingClientRect().top,
+          ) > 28
+        ) {
+          tableContainer.classList.remove("show-elementary-title");
+        }
+
         if (lockedIndexTargetId) {
           const target = document.getElementById(lockedIndexTargetId);
 
           if (target) {
             const containerTop = tableContainer.getBoundingClientRect().top;
             const targetTop = target.getBoundingClientRect().top;
-            const distance = Math.abs(targetTop - containerTop);
+            const isSectionTitleTarget = target.classList.contains(
+              "kanji-section-title",
+            );
+            const stickyIndexHeight = isSectionTitleTarget
+              ? 0
+              : getStickyIndexHeightForTarget(target);
+            const gapBelowStickyIndex = isSectionTitleTarget ? 0 : 8;
+            const sectionTitleTopPadding =
+              target.id === "secondary-top" ? 21 : 0;
+            const expectedTop =
+              containerTop +
+              stickyIndexHeight +
+              gapBelowStickyIndex +
+              sectionTitleTopPadding;
+            const distance = Math.abs(targetTop - expectedTop);
 
             if (distance > 8) {
               setActiveIndexButton(lockedIndexTargetId);
@@ -1312,8 +1380,12 @@
         for (const section of visibleKanaSections) {
           const sectionTop = section.getBoundingClientRect().top;
           const containerTop = tableContainer.getBoundingClientRect().top;
+          const stickyIndexHeight = getStickyIndexHeightForTarget(section);
+          const gapBelowStickyIndex = 8;
+          const highlightLine =
+            containerTop + stickyIndexHeight + gapBelowStickyIndex + 4;
 
-          if (sectionTop <= containerTop + 80) {
+          if (sectionTop <= highlightLine) {
             currentKanaSection = section;
           } else {
             break;
@@ -1333,15 +1405,22 @@
           });
       }
 
+      function getSectionNavTargetForIndex(targetId) {
+        if (targetId.startsWith("secondary-")) return "secondary-top";
+        return "elementary-top";
+      }
+
       function setActiveIndexButton(targetId, lock = false) {
         if (lock) lockedIndexTargetId = targetId;
+
+        const sectionNavTarget = getSectionNavTargetForIndex(targetId);
 
         kanjiSectionNav
           .querySelectorAll(".kanji-index-button")
           .forEach((button) => {
             button.classList.toggle(
               "active",
-              button.dataset.target === targetId,
+              button.dataset.target === sectionNavTarget,
             );
           });
 
@@ -1357,19 +1436,13 @@
           });
       }
 
-      tableContainer.addEventListener("click", (event) => {
-        const button = event.target.closest(".kanji-index-button");
-        if (!button) return;
-        scrollKanjiTarget(button.dataset.target);
-      });
-
       kanjiSectionNav.addEventListener("click", (event) => {
         const button = event.target.closest(".kanji-index-button");
         if (!button) return;
         event.stopPropagation();
 
         setActiveIndexButton(button.dataset.target, true);
-        scrollKanjiTarget(button.dataset.target);
+        scrollKanjiTarget(button.dataset.target, button);
       });
 
       tableContainer.addEventListener("scroll", updateKanjiSectionNavActive);
@@ -1379,7 +1452,7 @@
         if (!button) return;
 
         setActiveIndexButton(button.dataset.target, true);
-        scrollKanjiTarget(button.dataset.target);
+        scrollKanjiTarget(button.dataset.target, button);
       });
 
       document.addEventListener("click", (event) => {
