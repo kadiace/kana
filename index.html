@@ -1121,6 +1121,12 @@
           resetKanjiCheckboxes();
           activeModes.add("kanji");
           kanjiOptions.classList.add("open");
+        } else {
+          if (activeModes.has(nextMode)) {
+            activeModes.delete(nextMode);
+          } else {
+            activeModes.add(nextMode);
+          }
         }
 
         document.querySelectorAll(".mode-button").forEach((button) => {
