@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kana Random Practice</title>
+    <title>Kana & Kanji Random Practice</title>
     <style>
       * {
         box-sizing: border-box;
@@ -24,6 +24,10 @@
         user-select: none;
       }
 
+      button {
+        font-family: inherit;
+      }
+
       .top-actions {
         position: fixed;
         top: 16px;
@@ -33,41 +37,100 @@
         z-index: 10;
       }
 
+      .mode-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        width: min(720px, calc(100vw - 32px));
+        margin-bottom: 18px;
+        pointer-events: none;
+      }
+
+      .mode-group {
+        position: relative;
+        pointer-events: auto;
+        z-index: 30;
+      }
+
       .kana-table-button,
+      .mode-button,
       .answer-button {
         border: 0;
         border-radius: 999px;
         background: #0f172a;
         color: white;
-        font-size: 20px;
-        font-weight: 700;
+        font-size: 16px;
+        font-weight: 800;
         padding: 10px 16px;
         cursor: pointer;
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
         transition:
           transform 0.15s ease,
-          opacity 0.15s ease;
+          opacity 0.15s ease,
+          background 0.15s ease;
+      }
+
+      .kana-table-button {
+        min-width: 48px;
+        font-size: 20px;
+      }
+
+      .mode-button.active {
+        background: #2563eb;
       }
 
       .kana-table-button:hover,
+      .mode-button:hover,
       .answer-button:hover {
         transform: translateY(-1px);
-        opacity: 0.9;
+        opacity: 0.92;
+      }
+
+      .kanji-options {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 190px;
+        border-radius: 18px;
+        background: white;
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+        padding: 12px;
+        display: none;
+        gap: 8px;
+        flex-direction: column;
+        z-index: 999;
+      }
+
+      .kanji-options.open {
+        display: flex;
+      }
+
+      .kanji-options label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 800;
+        color: #1e293b;
+        cursor: pointer;
       }
 
       .practice-area {
         position: fixed;
         inset: 0;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 24px;
+        padding: 90px 24px 120px;
         cursor: pointer;
       }
 
       .card {
-        width: min(520px, 92vw);
-        min-height: 320px;
+        width: min(560px, 92vw);
+        min-height: 340px;
         border-radius: 32px;
         background: rgba(255, 255, 255, 0.74);
         backdrop-filter: blur(18px);
@@ -94,6 +157,15 @@
         letter-spacing: -0.08em;
       }
 
+      .meta-text {
+        margin-top: 16px;
+        min-height: 24px;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 700;
+        text-align: center;
+      }
+
       .bottom-panel {
         position: fixed;
         left: 50%;
@@ -115,7 +187,7 @@
       .answer-text {
         min-height: 34px;
         font-size: 26px;
-        font-weight: 800;
+        font-weight: 900;
         color: #1e293b;
         text-align: center;
       }
@@ -136,14 +208,16 @@
       }
 
       .modal {
-        width: min(920px, 96vw);
+        width: min(960px, 96vw);
         max-height: min(780px, 90vh);
-        overflow: auto;
+        overflow: hidden;
         border-radius: 28px;
         background: white;
         box-shadow: 0 30px 100px rgba(15, 23, 42, 0.35);
         padding: 24px;
         position: relative;
+        display: flex;
+        flex-direction: column;
       }
 
       .modal-header {
@@ -151,7 +225,18 @@
         justify-content: space-between;
         align-items: center;
         gap: 16px;
-        margin-bottom: 18px;
+        margin-bottom: 12px;
+        background: white;
+        padding-top: 4px;
+        z-index: 4;
+        flex: 0 0 auto;
+      }
+
+      #tableContainer {
+        overflow: auto;
+        min-height: 0;
+        flex: 1 1 auto;
+        scroll-behavior: smooth;
       }
 
       .modal-title {
@@ -170,6 +255,7 @@
         font-size: 24px;
         font-weight: 800;
         cursor: pointer;
+        flex: 0 0 auto;
       }
 
       .kana-grid {
@@ -213,7 +299,186 @@
         opacity: 0.35;
       }
 
+      .kanji-section-title {
+        margin: 22px 0 12px;
+        padding-top: 16px;
+        border-top: 2px solid #cbd5e1;
+        font-size: 20px;
+        font-weight: 900;
+        opacity: 1;
+        transform: translateY(0);
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease,
+          height 0.18s ease,
+          margin 0.18s ease,
+          padding 0.18s ease;
+      }
+
+      #tableContainer.scrolled
+        .kanji-outer-section:first-child
+        .kanji-section-title {
+        opacity: 0;
+        transform: translateY(-8px);
+        height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        border-top: 0;
+      }
+
+      .kanji-section-title:first-child {
+        border-top: 0;
+        padding-top: 0;
+        margin-top: 0;
+      }
+
+      .kanji-outer-section + .kanji-outer-section {
+        margin-top: 56px;
+        padding-top: 18px;
+      }
+
+      .kanji-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+        gap: 6px;
+      }
+
+      .kanji-cell {
+        min-height: 44px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: 900;
+      }
+
+      .loading-text {
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.6;
+      }
+
+      .kanji-index {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: white;
+        padding: 8px 0 12px;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 12px;
+      }
+
+      .kanji-section-nav {
+        display: none;
+        position: relative;
+        top: auto;
+        z-index: 4;
+        flex: 0 0 auto;
+        margin: 0 0 10px;
+        padding: 0 0 10px;
+        border-bottom: 1px solid #e2e8f0;
+        background: white;
+      }
+
+      .kanji-section-nav.open {
+        display: flex;
+      }
+
+      .kanji-index-button {
+        border: 0;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1e3a8a;
+        font-size: 13px;
+        font-weight: 900;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease,
+          transform 0.15s ease;
+      }
+
+      .kanji-index-button.active {
+        background: #2563eb;
+        color: white;
+      }
+
+      .kanji-list-section {
+        scroll-margin-top: 130px;
+      }
+
+      .kanji-list-section h4 {
+        margin: 18px 0 8px;
+        font-size: 18px;
+        font-weight: 900;
+        color: #1e293b;
+      }
+
+      .kanji-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 8px;
+      }
+
+      .kanji-list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-radius: 14px;
+        background: #f1f5f9;
+        padding: 10px 12px;
+      }
+
+      .kanji-list-char {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 900;
+        flex: 0 0 auto;
+      }
+
+      .kanji-list-info {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+        font-size: 13px;
+        line-height: 1.35;
+        color: #475569;
+      }
+
+      .kanji-list-info strong {
+        color: #0f172a;
+        font-size: 14px;
+      }
+
       @media (max-width: 640px) {
+        .top-actions {
+          top: auto;
+          bottom: 16px;
+          right: 16px;
+        }
+
+        .mode-actions {
+          top: 12px;
+        }
+
         .kana-grid {
           border-spacing: 5px;
         }
@@ -227,9 +492,11 @@
         .kana-cell-char {
           font-size: 24px;
         }
-
         .modal {
           padding: 16px;
+        }
+        .modal-header {
+          top: -16px;
         }
       }
     </style>
@@ -238,14 +505,42 @@
     <div class="top-actions">
       <button class="kana-table-button" data-table="hiragana">あ</button>
       <button class="kana-table-button" data-table="katakana">ア</button>
+      <button class="kana-table-button" data-table="kanji">漢</button>
     </div>
 
     <main class="practice-area" id="practiceArea">
+      <div class="mode-actions">
+        <div class="mode-group">
+          <button class="mode-button active" data-mode="hiragana">
+            히라가나만
+          </button>
+        </div>
+        <div class="mode-group">
+          <button class="mode-button" data-mode="katakana">가타카나만</button>
+        </div>
+        <div class="mode-group" id="kanjiModeGroup">
+          <button class="mode-button" data-mode="kanji" id="kanjiModeButton">
+            한자만
+          </button>
+          <div class="kanji-options" id="kanjiOptions">
+            <label
+              ><input type="checkbox" id="elementaryKanjiCheck" checked />
+              초등학교 1,006자</label
+            >
+            <label
+              ><input type="checkbox" id="secondaryKanjiCheck" checked /> 중학교
+              1,130자</label
+            >
+          </div>
+        </div>
+      </div>
+
       <section class="card">
-        <div class="hint">
-          화면 아무데나 클릭하면 랜덤 히라가나 또는 가타카나가 나옵니다.
+        <div class="hint" id="hintText">
+          화면 아무데나 클릭하면 선택한 범위에서 랜덤 글자가 나옵니다.
         </div>
         <div class="kana-display" id="kanaDisplay">あ</div>
+        <div class="meta-text" id="metaText"></div>
       </section>
     </main>
 
@@ -267,63 +562,74 @@
             ×
           </button>
         </header>
+        <nav class="kanji-index kanji-section-nav" id="kanjiSectionNav">
+          <button
+            class="kanji-index-button active"
+            data-target="elementary-top"
+          >
+            초등 한자
+          </button>
+          <button class="kanji-index-button" data-target="secondary-top">
+            중등 한자
+          </button>
+        </nav>
         <div id="tableContainer"></div>
       </section>
     </div>
 
     <script>
       const hiragana = [
-        { char: "あ", romaji: "a" },
-        { char: "い", romaji: "i" },
-        { char: "う", romaji: "u" },
-        { char: "え", romaji: "e" },
-        { char: "お", romaji: "o" },
-        { char: "か", romaji: "ka" },
-        { char: "き", romaji: "ki" },
-        { char: "く", romaji: "ku" },
-        { char: "け", romaji: "ke" },
-        { char: "こ", romaji: "ko" },
-        { char: "さ", romaji: "sa" },
-        { char: "し", romaji: "shi" },
-        { char: "す", romaji: "su" },
-        { char: "せ", romaji: "se" },
-        { char: "そ", romaji: "so" },
-        { char: "た", romaji: "ta" },
-        { char: "ち", romaji: "chi" },
-        { char: "つ", romaji: "tsu" },
-        { char: "て", romaji: "te" },
-        { char: "と", romaji: "to" },
-        { char: "な", romaji: "na" },
-        { char: "に", romaji: "ni" },
-        { char: "ぬ", romaji: "nu" },
-        { char: "ね", romaji: "ne" },
-        { char: "の", romaji: "no" },
-        { char: "は", romaji: "ha" },
-        { char: "ひ", romaji: "hi" },
-        { char: "ふ", romaji: "fu" },
-        { char: "へ", romaji: "he" },
-        { char: "ほ", romaji: "ho" },
-        { char: "ま", romaji: "ma" },
-        { char: "み", romaji: "mi" },
-        { char: "む", romaji: "mu" },
-        { char: "め", romaji: "me" },
-        { char: "も", romaji: "mo" },
-        { char: "や", romaji: "ya" },
+        { char: "あ", answer: "a" },
+        { char: "い", answer: "i" },
+        { char: "う", answer: "u" },
+        { char: "え", answer: "e" },
+        { char: "お", answer: "o" },
+        { char: "か", answer: "ka" },
+        { char: "き", answer: "ki" },
+        { char: "く", answer: "ku" },
+        { char: "け", answer: "ke" },
+        { char: "こ", answer: "ko" },
+        { char: "さ", answer: "sa" },
+        { char: "し", answer: "shi" },
+        { char: "す", answer: "su" },
+        { char: "せ", answer: "se" },
+        { char: "そ", answer: "so" },
+        { char: "た", answer: "ta" },
+        { char: "ち", answer: "chi" },
+        { char: "つ", answer: "tsu" },
+        { char: "て", answer: "te" },
+        { char: "と", answer: "to" },
+        { char: "な", answer: "na" },
+        { char: "に", answer: "ni" },
+        { char: "ぬ", answer: "nu" },
+        { char: "ね", answer: "ne" },
+        { char: "の", answer: "no" },
+        { char: "は", answer: "ha" },
+        { char: "ひ", answer: "hi" },
+        { char: "ふ", answer: "fu" },
+        { char: "へ", answer: "he" },
+        { char: "ほ", answer: "ho" },
+        { char: "ま", answer: "ma" },
+        { char: "み", answer: "mi" },
+        { char: "む", answer: "mu" },
+        { char: "め", answer: "me" },
+        { char: "も", answer: "mo" },
+        { char: "や", answer: "ya" },
         null,
-        { char: "ゆ", romaji: "yu" },
+        { char: "ゆ", answer: "yu" },
         null,
-        { char: "よ", romaji: "yo" },
-        { char: "ら", romaji: "ra" },
-        { char: "り", romaji: "ri" },
-        { char: "る", romaji: "ru" },
-        { char: "れ", romaji: "re" },
-        { char: "ろ", romaji: "ro" },
-        { char: "わ", romaji: "wa" },
+        { char: "よ", answer: "yo" },
+        { char: "ら", answer: "ra" },
+        { char: "り", answer: "ri" },
+        { char: "る", answer: "ru" },
+        { char: "れ", answer: "re" },
+        { char: "ろ", answer: "ro" },
+        { char: "わ", answer: "wa" },
         null,
         null,
         null,
-        { char: "を", romaji: "wo" },
-        { char: "ん", romaji: "n" },
+        { char: "を", answer: "wo" },
+        { char: "ん", answer: "n" },
         null,
         null,
         null,
@@ -331,113 +637,407 @@
       ];
 
       const katakana = [
-        { char: "ア", romaji: "a" },
-        { char: "イ", romaji: "i" },
-        { char: "ウ", romaji: "u" },
-        { char: "エ", romaji: "e" },
-        { char: "オ", romaji: "o" },
-        { char: "カ", romaji: "ka" },
-        { char: "キ", romaji: "ki" },
-        { char: "ク", romaji: "ku" },
-        { char: "ケ", romaji: "ke" },
-        { char: "コ", romaji: "ko" },
-        { char: "サ", romaji: "sa" },
-        { char: "シ", romaji: "shi" },
-        { char: "ス", romaji: "su" },
-        { char: "セ", romaji: "se" },
-        { char: "ソ", romaji: "so" },
-        { char: "タ", romaji: "ta" },
-        { char: "チ", romaji: "chi" },
-        { char: "ツ", romaji: "tsu" },
-        { char: "テ", romaji: "te" },
-        { char: "ト", romaji: "to" },
-        { char: "ナ", romaji: "na" },
-        { char: "ニ", romaji: "ni" },
-        { char: "ヌ", romaji: "nu" },
-        { char: "ネ", romaji: "ne" },
-        { char: "ノ", romaji: "no" },
-        { char: "ハ", romaji: "ha" },
-        { char: "ヒ", romaji: "hi" },
-        { char: "フ", romaji: "fu" },
-        { char: "ヘ", romaji: "he" },
-        { char: "ホ", romaji: "ho" },
-        { char: "マ", romaji: "ma" },
-        { char: "ミ", romaji: "mi" },
-        { char: "ム", romaji: "mu" },
-        { char: "メ", romaji: "me" },
-        { char: "モ", romaji: "mo" },
-        { char: "ヤ", romaji: "ya" },
+        { char: "ア", answer: "a" },
+        { char: "イ", answer: "i" },
+        { char: "ウ", answer: "u" },
+        { char: "エ", answer: "e" },
+        { char: "オ", answer: "o" },
+        { char: "カ", answer: "ka" },
+        { char: "キ", answer: "ki" },
+        { char: "ク", answer: "ku" },
+        { char: "ケ", answer: "ke" },
+        { char: "コ", answer: "ko" },
+        { char: "サ", answer: "sa" },
+        { char: "シ", answer: "shi" },
+        { char: "ス", answer: "su" },
+        { char: "セ", answer: "se" },
+        { char: "ソ", answer: "so" },
+        { char: "タ", answer: "ta" },
+        { char: "チ", answer: "chi" },
+        { char: "ツ", answer: "tsu" },
+        { char: "テ", answer: "te" },
+        { char: "ト", answer: "to" },
+        { char: "ナ", answer: "na" },
+        { char: "ニ", answer: "ni" },
+        { char: "ヌ", answer: "nu" },
+        { char: "ネ", answer: "ne" },
+        { char: "ノ", answer: "no" },
+        { char: "ハ", answer: "ha" },
+        { char: "ヒ", answer: "hi" },
+        { char: "フ", answer: "fu" },
+        { char: "ヘ", answer: "he" },
+        { char: "ホ", answer: "ho" },
+        { char: "マ", answer: "ma" },
+        { char: "ミ", answer: "mi" },
+        { char: "ム", answer: "mu" },
+        { char: "メ", answer: "me" },
+        { char: "モ", answer: "mo" },
+        { char: "ヤ", answer: "ya" },
         null,
-        { char: "ユ", romaji: "yu" },
+        { char: "ユ", answer: "yu" },
         null,
-        { char: "ヨ", romaji: "yo" },
-        { char: "ラ", romaji: "ra" },
-        { char: "リ", romaji: "ri" },
-        { char: "ル", romaji: "ru" },
-        { char: "レ", romaji: "re" },
-        { char: "ロ", romaji: "ro" },
-        { char: "ワ", romaji: "wa" },
+        { char: "ヨ", answer: "yo" },
+        { char: "ラ", answer: "ra" },
+        { char: "リ", answer: "ri" },
+        { char: "ル", answer: "ru" },
+        { char: "レ", answer: "re" },
+        { char: "ロ", answer: "ro" },
+        { char: "ワ", answer: "wa" },
         null,
         null,
         null,
-        { char: "ヲ", romaji: "wo" },
-        { char: "ン", romaji: "n" },
+        { char: "ヲ", answer: "wo" },
+        { char: "ン", answer: "n" },
         null,
         null,
         null,
         null,
       ];
 
-      const allKana = [...hiragana, ...katakana].filter(Boolean);
+      const wikipediaApiUrl =
+        "https://en.wikipedia.org/w/api.php?action=parse&page=List_of_j%C5%8Dy%C5%8D_kanji&prop=text&format=json&origin=*";
       const kanaDisplay = document.getElementById("kanaDisplay");
       const answerText = document.getElementById("answerText");
+      const metaText = document.getElementById("metaText");
       const practiceArea = document.getElementById("practiceArea");
       const answerButton = document.getElementById("answerButton");
       const modalOverlay = document.getElementById("modalOverlay");
       const modalTitle = document.getElementById("modalTitle");
       const tableContainer = document.getElementById("tableContainer");
+      const kanjiSectionNav = document.getElementById("kanjiSectionNav");
       const closeButton = document.getElementById("closeButton");
+      const kanjiOptions = document.getElementById("kanjiOptions");
+      const elementaryKanjiCheck = document.getElementById(
+        "elementaryKanjiCheck",
+      );
+      const secondaryKanjiCheck = document.getElementById(
+        "secondaryKanjiCheck",
+      );
+      const activeModes = new Set(["hiragana"]);
 
-      let currentKana = allKana[0];
+      let currentItem = hiragana[0];
+      const emptyItem = { char: "?", answer: "" };
+      let elementaryKanji = [];
+      let secondaryKanji = [];
+      let kanjiLoadState = "loading";
 
-      function pickRandomKana() {
-        currentKana = allKana[Math.floor(Math.random() * allKana.length)];
-        kanaDisplay.textContent = currentKana.char;
+      const kanaIndexOrder = [
+        "あ",
+        "い",
+        "う",
+        "え",
+        "お",
+        "か",
+        "き",
+        "く",
+        "け",
+        "こ",
+        "さ",
+        "し",
+        "す",
+        "せ",
+        "そ",
+        "た",
+        "ち",
+        "つ",
+        "て",
+        "と",
+        "な",
+        "に",
+        "ぬ",
+        "ね",
+        "の",
+        "は",
+        "ひ",
+        "ふ",
+        "へ",
+        "ほ",
+        "ま",
+        "み",
+        "む",
+        "め",
+        "も",
+        "や",
+        "ゆ",
+        "よ",
+        "ら",
+        "り",
+        "る",
+        "れ",
+        "ろ",
+        "わ",
+        "を",
+        "ん",
+      ];
+
+      function cleanText(value) {
+        return value
+          .split("[")
+          .join(" ")
+          .split("]")
+          .join(" ")
+          .replaceAll("  ", " ")
+          .trim();
+      }
+
+      function firstKana(value) {
+        for (const char of value) {
+          const code = char.charCodeAt(0);
+          if (code >= 12353 && code <= 12435) return char;
+          if (code >= 12449 && code <= 12531)
+            return String.fromCharCode(code - 96);
+        }
+        return "その他";
+      }
+
+      async function loadKanji() {
+        try {
+          const response = await fetch(wikipediaApiUrl);
+          const data = await response.json();
+          const doc = new DOMParser().parseFromString(
+            data.parse.text["*"],
+            "text/html",
+          );
+          const rows = [...doc.querySelectorAll("table.wikitable tbody tr")];
+          const loadedElementary = [];
+          const loadedSecondary = [];
+
+          for (const row of rows) {
+            const cells = [...row.querySelectorAll("td")];
+            if (cells.length < 7) continue;
+
+            const char = cleanText(cells[1].textContent).charAt(0);
+            const grade = cleanText(cells[5].textContent);
+            const meaning = cleanText(cells[cells.length - 2].textContent);
+            const readings = cleanText(cells[cells.length - 1].textContent);
+
+            if (!char) continue;
+
+            const item = {
+              char,
+              answer: readings + (meaning ? " / " + meaning : ""),
+              readings,
+              meaning,
+              grade,
+              kanaIndex: firstKana(readings),
+            };
+
+            if (["1", "2", "3", "4", "5", "6"].includes(grade))
+              loadedElementary.push(item);
+            if (grade === "S") loadedSecondary.push(item);
+          }
+
+          elementaryKanji = sortKanji(loadedElementary);
+          secondaryKanji = sortKanji(loadedSecondary);
+          kanjiLoadState =
+            elementaryKanji.length && secondaryKanji.length ? "ready" : "error";
+        } catch (error) {
+          kanjiLoadState = "error";
+          console.error(error);
+        }
+
+        updateMetaText();
+      }
+
+      function sortKanji(items) {
+        return [...items].sort((a, b) => a.char.localeCompare(b.char, "ja"));
+      }
+
+      function getSelectedKanji() {
+        if (kanjiLoadState !== "ready") return [];
+        const selected = [];
+        if (elementaryKanjiCheck.checked) selected.push(...elementaryKanji);
+        if (secondaryKanjiCheck.checked) selected.push(...secondaryKanji);
+        return selected;
+      }
+
+      function getActiveItems() {
+        const selected = [];
+        if (activeModes.has("hiragana"))
+          selected.push(...hiragana.filter(Boolean));
+        if (activeModes.has("katakana"))
+          selected.push(...katakana.filter(Boolean));
+        if (activeModes.has("kanji")) selected.push(...getSelectedKanji());
+        return selected;
+      }
+
+      function updateMetaText() {
+        const labels = [];
+        if (activeModes.has("hiragana")) labels.push("히라가나");
+        if (activeModes.has("katakana")) labels.push("가타카나");
+        if (activeModes.has("kanji")) {
+          if (kanjiLoadState === "loading") labels.push("한자 불러오는 중");
+          if (kanjiLoadState === "error") labels.push("한자 불러오기 실패");
+          if (kanjiLoadState === "ready")
+            labels.push(
+              "한자 " + getSelectedKanji().length.toLocaleString() + "자",
+            );
+        }
+        const count = getActiveItems().length;
+
+        if (!count) {
+          metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+          kanaDisplay.textContent = "?";
+          currentItem = emptyItem;
+          answerText.textContent = "";
+          return;
+        }
+
+        metaText.textContent =
+          labels.join(" + ") + " / 총 " + count.toLocaleString() + "자";
+      }
+
+      function pickRandomItem() {
+        const items = getActiveItems();
         answerText.textContent = "";
+        updateMetaText();
+        if (!items.length) {
+          kanaDisplay.textContent = "?";
+          currentItem = emptyItem;
+          metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+          answerText.textContent = "";
+          return;
+        }
+        currentItem = items[Math.floor(Math.random() * items.length)];
+        kanaDisplay.textContent = currentItem.char;
       }
 
       function showAnswer(event) {
         event.stopPropagation();
-        answerText.textContent = currentKana.romaji;
+        answerText.textContent = currentItem.answer || "";
       }
 
       function buildKanaTable(items) {
         const headers = ["a", "i", "u", "e", "o"];
-        let html = `<table class="kana-grid"><thead><tr>${headers.map((header) => `<th>${header}</th>`).join("")}</tr></thead><tbody>`;
-
+        let html =
+          '<table class="kana-grid"><thead><tr>' +
+          headers.map((header) => "<th>" + header + "</th>").join("") +
+          "</tr></thead><tbody>";
         for (let i = 0; i < items.length; i += 5) {
           html += "<tr>";
           for (const item of items.slice(i, i + 5)) {
-            if (!item) {
-              html += `<td class="empty-cell">—</td>`;
-            } else {
-              html += `<td><span class="kana-cell-char">${item.char}</span><span class="kana-cell-romaji">${item.romaji}</span></td>`;
-            }
+            if (!item) html += '<td class="empty-cell">—</td>';
+            else
+              html +=
+                '<td><span class="kana-cell-char">' +
+                item.char +
+                '</span><span class="kana-cell-romaji">' +
+                item.answer +
+                "</span></td>";
           }
           html += "</tr>";
         }
-
         html += "</tbody></table>";
         return html;
       }
 
+      function groupedByKana(items) {
+        const groups = new Map();
+        for (const item of items) {
+          const key = item.kanaIndex || "その他";
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(item);
+        }
+        return groups;
+      }
+
+      function buildKanjiList(title, items, prefix) {
+        const groups = groupedByKana(items);
+        const keys = kanaIndexOrder.filter((key) => groups.has(key));
+        if (groups.has("その他")) keys.push("その他");
+        const indexButtons = keys
+          .map(
+            (key) =>
+              '<button class="kanji-index-button" data-target="' +
+              prefix +
+              "-" +
+              key +
+              '">' +
+              key +
+              "</button>",
+          )
+          .join("");
+        const sections = keys
+          .map((key) => {
+            const listItems = groups
+              .get(key)
+              .map(
+                (item) =>
+                  '<li class="kanji-list-item"><span class="kanji-list-char">' +
+                  item.char +
+                  '</span><span class="kanji-list-info"><strong>' +
+                  (item.readings || "읽기 정보 없음") +
+                  "</strong><span>" +
+                  (item.meaning || "뜻 정보 없음") +
+                  "</span></span></li>",
+              )
+              .join("");
+            return (
+              '<section class="kanji-list-section" id="' +
+              prefix +
+              "-" +
+              key +
+              '"><h4>' +
+              key +
+              '</h4><ul class="kanji-list">' +
+              listItems +
+              "</ul></section>"
+            );
+          })
+          .join("");
+        return (
+          '<section class="kanji-outer-section"><h3 class="kanji-section-title" id="' +
+          prefix +
+          '-top">' +
+          title +
+          " " +
+          items.length.toLocaleString() +
+          '자</h3><nav class="kanji-index">' +
+          indexButtons +
+          "</nav>" +
+          sections +
+          "</section>"
+        );
+      }
+
+      function buildKanjiTable() {
+        if (kanjiLoadState === "loading")
+          return '<p class="loading-text">한자 목록을 불러오는 중입니다.</p>';
+        if (kanjiLoadState === "error")
+          return '<p class="loading-text">한자 목록을 불러오지 못했습니다. 브라우저에서 Wikipedia API 접근이 가능한지 확인해 주세요.</p>';
+        return (
+          buildKanjiList("초등학교 학습 한자", elementaryKanji, "elementary") +
+          buildKanjiList("중학교 학습 한자", secondaryKanji, "secondary")
+        );
+      }
+
       function openTable(type, event) {
         event.stopPropagation();
-        const isHiragana = type === "hiragana";
-        modalTitle.textContent = isHiragana ? "히라가나 표" : "가타카나 표";
-        tableContainer.innerHTML = buildKanaTable(
-          isHiragana ? hiragana : katakana,
-        );
+        kanjiSectionNav.classList.toggle("open", type === "kanji");
+        tableContainer.classList.remove("scrolled");
+        tableContainer.scrollTop = 0;
+
+        if (type === "hiragana") {
+          modalTitle.textContent = "히라가나 표";
+          tableContainer.innerHTML = buildKanaTable(hiragana);
+        }
+        if (type === "katakana") {
+          modalTitle.textContent = "가타카나 표";
+          tableContainer.innerHTML = buildKanaTable(katakana);
+        }
+        if (type === "kanji") {
+          modalTitle.textContent = "상용 한자 표";
+          tableContainer.innerHTML = buildKanjiTable();
+          kanjiSectionNav
+            .querySelectorAll(".kanji-index-button")
+            .forEach((button) => {
+              button.classList.toggle(
+                "active",
+                button.dataset.target === "elementary-top",
+              );
+            });
+          requestAnimationFrame(updateKanjiSectionNavActive);
+        }
         modalOverlay.classList.add("open");
       }
 
@@ -445,7 +1045,61 @@
         modalOverlay.classList.remove("open");
       }
 
-      practiceArea.addEventListener("click", pickRandomKana);
+      function toggleMode(nextMode, event) {
+        event.stopPropagation();
+        const hadNoActiveItems = getActiveItems().length === 0;
+
+        if (nextMode === "kanji") {
+          if (activeModes.has("kanji")) {
+            if (kanjiOptions.classList.contains("open")) {
+              closeKanjiOptionsWithValidation();
+            } else {
+              kanjiOptions.classList.add("open");
+              updateMetaText();
+            }
+            return;
+          }
+
+          resetKanjiCheckboxes();
+          activeModes.add("kanji");
+          kanjiOptions.classList.add("open");
+        } else {
+          if (activeModes.has(nextMode)) activeModes.delete(nextMode);
+          else activeModes.add(nextMode);
+        }
+
+        document.querySelectorAll(".mode-button").forEach((button) => {
+          button.classList.toggle(
+            "active",
+            activeModes.has(button.dataset.mode),
+          );
+        });
+
+        if (hadNoActiveItems && getActiveItems().length > 0) {
+          pickRandomItem();
+        } else {
+          updateMetaText();
+        }
+      }
+
+      practiceArea.addEventListener("click", (event) => {
+        if (
+          event.target.closest("button") ||
+          event.target.closest(".kanji-options")
+        )
+          return;
+
+        if (
+          kanjiOptions.classList.contains("open") &&
+          !document.getElementById("kanjiModeGroup").contains(event.target)
+        ) {
+          closeKanjiOptionsWithValidation();
+          return;
+        }
+
+        pickRandomItem();
+      });
+
       answerButton.addEventListener("click", showAnswer);
       closeButton.addEventListener("click", closeModal);
 
@@ -455,17 +1109,180 @@
         );
       });
 
-      modalOverlay.addEventListener("click", (event) => {
-        if (event.target === modalOverlay) {
-          closeModal();
+      document.querySelectorAll(".mode-button").forEach((button) => {
+        button.addEventListener("click", (event) =>
+          toggleMode(button.dataset.mode, event),
+        );
+      });
+
+      function resetKanjiCheckboxes() {
+        elementaryKanjiCheck.checked = true;
+        secondaryKanjiCheck.checked = true;
+        updateMetaText();
+      }
+
+      function closeKanjiOptionsWithValidation() {
+        const hasAnyKanjiRange =
+          elementaryKanjiCheck.checked || secondaryKanjiCheck.checked;
+
+        if (!hasAnyKanjiRange) {
+          activeModes.delete("kanji");
+          document.querySelectorAll(".mode-button").forEach((button) => {
+            button.classList.toggle(
+              "active",
+              activeModes.has(button.dataset.mode),
+            );
+          });
+        }
+
+        kanjiOptions.classList.remove("open");
+        updateMetaText();
+      }
+
+      function syncKanjiModeFromCheckboxChange() {
+        const hasAnyKanjiRange =
+          elementaryKanjiCheck.checked || secondaryKanjiCheck.checked;
+        const activeItems = getActiveItems();
+
+        if (!hasAnyKanjiRange) {
+          kanaDisplay.textContent = "?";
+          currentItem = emptyItem;
+          answerText.textContent = "";
+          metaText.textContent = "하나 이상의 버튼을 선택해주세요.";
+          return;
+        }
+
+        activeModes.add("kanji");
+        document.querySelectorAll(".mode-button").forEach((button) => {
+          button.classList.toggle(
+            "active",
+            activeModes.has(button.dataset.mode),
+          );
+        });
+
+        const onlyQuestionIsVisible = kanaDisplay.textContent === "?";
+        if (onlyQuestionIsVisible || activeItems.length > 0) {
+          pickRandomItem();
+          return;
+        }
+
+        updateMetaText();
+      }
+
+      kanjiOptions.addEventListener("click", (event) => {
+        event.stopPropagation();
+        updateMetaText();
+      });
+
+      elementaryKanjiCheck.addEventListener(
+        "change",
+        syncKanjiModeFromCheckboxChange,
+      );
+      secondaryKanjiCheck.addEventListener(
+        "change",
+        syncKanjiModeFromCheckboxChange,
+      );
+
+      function scrollKanjiTarget(targetId) {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+
+        const containerTop = tableContainer.getBoundingClientRect().top;
+        const targetTop = target.getBoundingClientRect().top;
+        const stickyCompensation = target.classList.contains(
+          "kanji-section-title",
+        )
+          ? 48
+          : 0;
+        const offset =
+          tableContainer.scrollTop +
+          targetTop -
+          containerTop -
+          stickyCompensation;
+        tableContainer.scrollTo({
+          top: Math.max(0, offset),
+          behavior: "smooth",
+        });
+      }
+
+      function updateKanjiSectionNavActive() {
+        const elementaryTop = document.getElementById("elementary-top");
+        const secondaryTop = document.getElementById("secondary-top");
+        const buttons = kanjiSectionNav.querySelectorAll(".kanji-index-button");
+
+        tableContainer.classList.toggle(
+          "scrolled",
+          tableContainer.scrollTop > 8,
+        );
+
+        if (!elementaryTop || !secondaryTop) {
+          buttons.forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.target === "elementary-top",
+            );
+          });
+          return;
+        }
+
+        if (tableContainer.scrollTop <= 8) {
+          buttons.forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.target === "elementary-top",
+            );
+          });
+          return;
+        }
+
+        const containerTop = tableContainer.getBoundingClientRect().top;
+        const secondaryTitleTop = secondaryTop.getBoundingClientRect().top;
+        const activeTarget =
+          secondaryTitleTop <= containerTop + 24
+            ? "secondary-top"
+            : "elementary-top";
+
+        buttons.forEach((button) => {
+          button.classList.toggle(
+            "active",
+            button.dataset.target === activeTarget,
+          );
+        });
+      }
+
+      tableContainer.addEventListener("click", (event) => {
+        const button = event.target.closest(".kanji-index-button");
+        if (!button) return;
+        scrollKanjiTarget(button.dataset.target);
+      });
+
+      kanjiSectionNav.addEventListener("click", (event) => {
+        const button = event.target.closest(".kanji-index-button");
+        if (!button) return;
+        event.stopPropagation();
+        scrollKanjiTarget(button.dataset.target);
+      });
+
+      tableContainer.addEventListener("scroll", updateKanjiSectionNavActive);
+
+      document.addEventListener("click", (event) => {
+        if (
+          !document.getElementById("kanjiModeGroup").contains(event.target) &&
+          kanjiOptions.classList.contains("open")
+        ) {
+          closeKanjiOptionsWithValidation();
         }
       });
 
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          closeModal();
-        }
+      modalOverlay.addEventListener("click", (event) => {
+        if (event.target === modalOverlay) closeModal();
       });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeModal();
+      });
+
+      loadKanji();
     </script>
   </body>
 </html>
